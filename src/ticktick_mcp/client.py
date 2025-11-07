@@ -264,7 +264,8 @@ class TickTickClient:
         
         # Merge updates with current task
         updated_task = {**current_task, **updates}
-        return await self._request("POST", f"/task/{task_id}/{project_id}", json=updated_task)
+        # Use POST /task/{taskId} endpoint (without project_id)
+        return await self._request("POST", f"/task/{task_id}", json=updated_task)
 
     async def create_project(self, name: str, color: Optional[str] = None, view_mode: Optional[str] = None):
         """Create a new project."""
@@ -338,7 +339,7 @@ class TickTickClient:
         if tag_name not in tags:
             tags.append(tag_name)
             current_task['tags'] = tags
-            return await self._request("POST", f"/task/{task_id}/{project_id}", json=current_task)
+            return await self._request("POST", f"/task/{task_id}", json=current_task)
         
         return current_task
 
