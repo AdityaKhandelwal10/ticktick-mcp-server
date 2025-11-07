@@ -108,6 +108,135 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["task_id", "project_id"]
             }
+        ),
+        Tool(
+            name="update_task",
+            description="Update an existing task (title, content, priority, due date, etc.)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to update"
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID the task belongs to"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "New task title"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "New task description/content"
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "description": "Priority level: 0=none, 1=low, 3=medium, 5=high"
+                    },
+                    "dueDate": {
+                        "type": "string",
+                        "description": "Due date in ISO format (e.g., 2024-12-31T10:00:00Z)"
+                    }
+                },
+                "required": ["task_id", "project_id"]
+            }
+        ),
+        Tool(
+            name="create_project",
+            description="Create a new project/list",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Project name"
+                    },
+                    "color": {
+                        "type": "string",
+                        "description": "Optional color for the project"
+                    }
+                },
+                "required": ["name"]
+            }
+        ),
+        Tool(
+            name="search_tasks",
+            description="Search for tasks by keyword in title or content",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "keyword": {
+                        "type": "string",
+                        "description": "Search keyword"
+                    }
+                },
+                "required": ["keyword"]
+            }
+        ),
+        Tool(
+            name="get_tasks_today",
+            description="Get all tasks due today",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_tasks_overdue",
+            description="Get all overdue tasks",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="get_tasks_by_priority",
+            description="Get tasks filtered by priority level",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "priority": {
+                        "type": "integer",
+                        "description": "Priority level: 0=none, 1=low, 3=medium, 5=high"
+                    }
+                },
+                "required": ["priority"]
+            }
+        ),
+        Tool(
+            name="list_tags",
+            description="List all tags used in tasks",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
+            name="add_tag_to_task",
+            description="Add a tag to a task",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID"
+                    },
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID the task belongs to"
+                    },
+                    "tag_name": {
+                        "type": "string",
+                        "description": "Tag name to add"
+                    }
+                },
+                "required": ["task_id", "project_id", "tag_name"]
+            }
         )
     ]
 
@@ -163,6 +292,133 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             
             await ticktick.delete_task(task_id, project_id)
             return [TextContent(type="text", text=f"Task {task_id} deleted")]
+        
+        elif name == "update_task":
+            task_id = arguments["task_id"]
+            project_id = arguments["project_id"]
+            
+            # Build updates dict from provided arguments
+            updates = {}
+            if "title" in arguments:
+                updates["title"] = arguments["title"]
+            if "content" in arguments:
+                updates["content"] = arguments["content"]
+            if "priority" in arguments:
+                updates["priority"] = arguments["priority"]
+            if "dueDate" in arguments:
+                updates["dueDate"] = arguments["dueDate"]
+            
+            task = await ticktick.update_task(task_id, project_id, **updates)
+            return [TextContent(
+                type="text",
+                text=f"Updated task: {task.get('title', task_id)}"
+            )]
+        
+        elif name == "create_project":
+            name_arg = arguments["name"]
+            color = arguments.get("color")
+            
+            project = await ticktick.create_project(name_arg, color)
+            return [TextContent(
+                type="text",
+                text=f"Created project: {project['name']} (ID: {project['id']})"
+            )]
+        
+        elif name == "search_tasks":
+            keyword = arguments["keyword"]
+            tasks = await ticktick.search_tasks(keyword)
+            
+            if not tasks:
+                return [TextContent(type="text", text=f"No tasks found matching '{keyword}'")]
+            
+            result = []
+            for task in tasks:
+                status = "✓" if task.get("status") == 2 else "○"
+                title = task.get("title", "Untitled")
+                task_id = task.get("id", "")
+                result.append(f"{status} {title} (ID: {task_id})")
+            
+            return [TextContent(
+                type="text",
+                text=f"Found {len(tasks)} tasks matching '{keyword}':\n" + "\n".join(result)
+            )]
+        
+        elif name == "get_tasks_today":
+            tasks = await ticktick.get_tasks_today()
+            
+            if not tasks:
+                return [TextContent(type="text", text="No tasks due today")]
+            
+            result = []
+            for task in tasks:
+                status = "✓" if task.get("status") == 2 else "○"
+                title = task.get("title", "Untitled")
+                result.append(f"{status} {title}")
+            
+            return [TextContent(
+                type="text",
+                text=f"Tasks due today ({len(tasks)}):\n" + "\n".join(result)
+            )]
+        
+        elif name == "get_tasks_overdue":
+            tasks = await ticktick.get_tasks_overdue()
+            
+            if not tasks:
+                return [TextContent(type="text", text="No overdue tasks! 🎉")]
+            
+            result = []
+            for task in tasks:
+                title = task.get("title", "Untitled")
+                due = task.get("dueDate", "")
+                result.append(f"⚠️ {title} (Due: {due})")
+            
+            return [TextContent(
+                type="text",
+                text=f"Overdue tasks ({len(tasks)}):\n" + "\n".join(result)
+            )]
+        
+        elif name == "get_tasks_by_priority":
+            priority = arguments["priority"]
+            tasks = await ticktick.get_tasks_by_priority(priority)
+            
+            priority_names = {0: "None", 1: "Low", 3: "Medium", 5: "High"}
+            priority_name = priority_names.get(priority, str(priority))
+            
+            if not tasks:
+                return [TextContent(type="text", text=f"No tasks with priority: {priority_name}")]
+            
+            result = []
+            for task in tasks:
+                status = "✓" if task.get("status") == 2 else "○"
+                title = task.get("title", "Untitled")
+                result.append(f"{status} {title}")
+            
+            return [TextContent(
+                type="text",
+                text=f"Tasks with {priority_name} priority ({len(tasks)}):\n" + "\n".join(result)
+            )]
+        
+        elif name == "list_tags":
+            tags = await ticktick.list_tags()
+            
+            if not tags:
+                return [TextContent(type="text", text="No tags found")]
+            
+            return [TextContent(
+                type="text",
+                text=f"Tags ({len(tags)}):\n" + "\n".join([f"#{tag}" for tag in tags])
+            )]
+        
+        elif name == "add_tag_to_task":
+            task_id = arguments["task_id"]
+            project_id = arguments["project_id"]
+            tag_name = arguments["tag_name"]
+            
+            await ticktick.add_tag_to_task(task_id, project_id, tag_name)
+            return [TextContent(
+                type="text",
+                text=f"Added tag '#{tag_name}' to task {task_id}"
+            )]
         
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
