@@ -4,11 +4,23 @@ MCP server for TickTick task management - enables AI assistants like Claude to m
 
 ## Features
 
+### Core Task Management
 - ✅ List projects and tasks
 - ✅ Create new tasks
+- ✅ Update tasks (title, content, priority, due date)
 - ✅ Complete tasks
 - ✅ Delete tasks
-- ✅ OAuth2 authentication with token refresh
+
+### Advanced Features
+- ✅ Search tasks by keyword
+- ✅ Get tasks due today
+- ✅ Get overdue tasks
+- ✅ Filter tasks by priority
+- ✅ Tag management (list tags, add tags to tasks)
+- ✅ Create new projects
+
+### Authentication
+- ✅ OAuth2 authentication with automatic token refresh
 
 ## Setup
 
@@ -77,19 +89,45 @@ On first use, the MCP server will:
 
 Once configured, you can ask Claude or Cursor:
 
+**Basic Operations:**
 - "List my TickTick projects"
 - "Show me all my tasks"
-- "Create a task called 'Review PR' in my Work project"
-- "Mark task XYZ as complete"
+- "Create a task called 'Review PR'"
+- "Complete task XYZ"
 - "Delete task ABC"
 
-## Tools Available
+**Advanced Queries:**
+- "Search for tasks about 'meeting'"
+- "What tasks are due today?"
+- "Show me all overdue tasks"
+- "List my high priority tasks"
+- "Update task XYZ to high priority"
+- "Add tag 'urgent' to task ABC"
+- "Create a new project called 'Personal'"
+- "What tags am I using?"
 
+## Tools Available (13 total)
+
+### Project Management
 - `list_projects` - Get all projects
+- `create_project` - Create a new project/list
+
+### Task Operations
 - `list_tasks` - Get tasks (optionally filter by project)
 - `create_task` - Create a new task
+- `update_task` - Update task properties (title, content, priority, due date)
 - `complete_task` - Mark task complete
 - `delete_task` - Delete a task
+
+### Search & Filtering
+- `search_tasks` - Search tasks by keyword
+- `get_tasks_today` - Get tasks due today
+- `get_tasks_overdue` - Get overdue tasks
+- `get_tasks_by_priority` - Filter by priority (0=none, 1=low, 3=medium, 5=high)
+
+### Tags
+- `list_tags` - List all tags
+- `add_tag_to_task` - Add a tag to a task
 
 ## Development
 

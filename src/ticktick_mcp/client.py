@@ -252,3 +252,93 @@ class TickTickClient:
         """Delete a task."""
         return await self._request("DELETE", f"/task/{task_id}/{project_id}")
 
+    async def update_task(self, task_id: str, project_id: str, **updates):
+        """Update a task with new properties."""
+        # Get current task first
+        data = await self._request("GET", f"/project/{project_id}/data")
+        tasks = data.get('tasks', []) if isinstance(data, dict) else []
+        current_task = next((t for t in tasks if t.get('id') == task_id), None)
+        
+        if not current_task:
+            raise Exception(f"Task {task_id} not found in project {project_id}")
+        
+        # Merge updates with current task
+        updated_task = {**current_task, **updates}
+        return await self._request("POST", f"/task/{task_id}/{project_id}", json=updated_task)
+
+    async def create_project(self, name: str, color: Optional[str] = None, view_mode: Optional[str] = None):
+        """Create a new project."""
+        data = {"name": name}
+        if color:
+            data["color"] = color
+        if view_mode:
+            data["viewMode"] = view_mode
+        return await self._request("POST", "/project", json=data)
+
+    async def search_tasks(self, keyword: str):
+        """Search tasks by keyword in title or content."""
+        # Get all tasks and filter client-side since API may not have search
+        all_tasks = await self.get_tasks()
+        keyword_lower = keyword.lower()
+        return [
+            task for task in all_tasks
+            if keyword_lower in task.get('title', '').lower() 
+            or keyword_lower in task.get('content', '').lower()
+        ]
+
+    async def get_tasks_today(self):
+        """Get tasks due today."""
+        from datetime import datetime, timezone
+        all_tasks = await self.get_tasks()
+        today = datetime.now(timezone.utc).date()
+        return [
+            task for task in all_tasks
+            if task.get('dueDate') and 
+            datetime.fromisoformat(task['dueDate'].replace('Z', '+00:00')).date() == today
+        ]
+
+    async def get_tasks_overdue(self):
+        """Get overdue tasks."""
+        from datetime import datetime, timezone
+        all_tasks = await self.get_tasks()
+        now = datetime.now(timezone.utc)
+        return [
+            task for task in all_tasks
+            if task.get('dueDate') and 
+            datetime.fromisoformat(task['dueDate'].replace('Z', '+00:00')) < now
+            and task.get('status') != 2  # Not completed
+        ]
+
+    async def get_tasks_by_priority(self, priority: int):
+        """Get tasks by priority level (0=none, 1=low, 3=medium, 5=high)."""
+        all_tasks = await self.get_tasks()
+        return [task for task in all_tasks if task.get('priority') == priority]
+
+    async def list_tags(self):
+        """Get all tags used across tasks."""
+        all_tasks = await self.get_tasks()
+        tags = set()
+        for task in all_tasks:
+            if 'tags' in task and task['tags']:
+                tags.update(task['tags'])
+        return sorted(list(tags))
+
+    async def add_tag_to_task(self, task_id: str, project_id: str, tag_name: str):
+        """Add a tag to a task."""
+        # Get current task
+        data = await self._request("GET", f"/project/{project_id}/data")
+        tasks = data.get('tasks', []) if isinstance(data, dict) else []
+        current_task = next((t for t in tasks if t.get('id') == task_id), None)
+        
+        if not current_task:
+            raise Exception(f"Task {task_id} not found")
+        
+        # Add tag if not already present
+        tags = current_task.get('tags', [])
+        if tag_name not in tags:
+            tags.append(tag_name)
+            current_task['tags'] = tags
+            return await self._request("POST", f"/task/{task_id}/{project_id}", json=current_task)
+        
+        return current_task
+
